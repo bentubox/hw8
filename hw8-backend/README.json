@@ -1,0 +1,5 @@
+{ 
+    "netid": "bnt1",
+    "frontend": "wiggly-feet.surge.sh",
+    "backend": "https://fierce-gorge-62616.herokuapp.com/"
+}
