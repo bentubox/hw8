@@ -2,6 +2,8 @@ const isLoggedIn = require('./auth').isLoggedIn
 const Article = require('./model.js').Article
 const Comment = require('./model.js').Comment
 const Profile = require('./model.js').Profile
+const Following = require('./model.js').Following
+
 const ObjectId = require('mongoose').Types.ObjectId
 
 // Function that resets articles to a set of default data.
@@ -212,10 +214,17 @@ const getArticles = (req, res) => {
     console.log('Payload received:', req.body)
     console.log('Parameters received:', req.params)
     if (!req.params.id){
-        // No id specified. Send all articles in database.
-        Article.find({}, (err, articles) => {
-            res.send({ articles: articles })
+        // No id specified. Send 10 most recent articles by followed users.
+        Following.findOne({ username: req.user }).exec((err, document) => {
+            if (err){
+                throw new Error(err)
+            }
+            const usersToQuery = [ req.user, ...document.following ]
+            Article.find({ author: { $in: usersToQuery } }).sort({date: -1}).limit(10).exec((err, articles) => {
+                res.send({ articles: articles })
+            })
         })
+        
     } else {
         const ids = req.params.id.split(',')
         // Populate article list with articles that match on ids or author.
