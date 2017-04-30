@@ -5,6 +5,7 @@ const Profile = require('./model.js').Profile
 const Following = require('./model.js').Following
 
 const ObjectId = require('mongoose').Types.ObjectId
+const uploadImage = require('../uploadCloudinary')
 
 // Function that resets articles to a set of default data.
 const resetDefaultArticles = () => {
@@ -116,7 +117,7 @@ const resetDefaultArticles = () => {
     }).save()
 }
 
-resetDefaultArticles()
+// resetDefaultArticles()
 
 // Function that finds an article based on id.
 const findById = (id, callback) => {
@@ -290,14 +291,19 @@ const updateArticles = (req, res) => {
 
 const postArticle = (req, res) => {
     console.log('Payload received:', req.body)
-    console.log('Parameters received:', req.params)
     new Article({
         author: req.user,
+        img: req.fileurl,
         date: new Date(),
         text: req.body.text,
         comments: []
     }).save( (err, newArticle) => {
+        if (err){
+            throw new Error(err)
+        }
+        console.log(newArticle)
         findById(newArticle._id, (articles) => {
+            console.log(articles)
             res.send({ articles: articles})
         })
     })
@@ -306,5 +312,5 @@ const postArticle = (req, res) => {
 module.exports = (app) => {
     app.get('/articles/:id*?', isLoggedIn, getArticles)
     app.put('/articles/:id', isLoggedIn, updateArticles)
-    app.post('/article', isLoggedIn, postArticle)
+    app.post('/article', isLoggedIn, uploadImage('articlepic'), postArticle)
 }

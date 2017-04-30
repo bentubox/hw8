@@ -1,6 +1,8 @@
 const isLoggedIn = require('./auth').isLoggedIn
 const Profile = require('./model.js').Profile
 
+const uploadImage = require('../uploadCloudinary')
+
 // Function that resets profiles to a set of default data.
 const resetDefaultProfiles = () => {
     // Clear documents.
@@ -56,7 +58,7 @@ const resetDefaultProfiles = () => {
         }).save()
 }
 
-resetDefaultProfiles()
+// resetDefaultProfiles()
 
 // Functions that query users by username, then runs a callback function on the results.
 const findByUsernames = (usernames, callback) => {
@@ -191,12 +193,10 @@ const getAvatars = (req, res) => {
 const updateAvatar = (req, res) => {
     console.log('Payload received:', req.body)
 
-     // Requested user.
-    const requestedUser = req.params.user ? req.params.user : req.user
-    // Stub functionality. Avatar not updated in database.
-    findOneByUsername(requestedUser, (result) => {
-        res.send({ username: result.username, avatar: result.avatar })
-    }) 
+    // Requested user.
+    updateByUsername(req.user, { avatar: req.fileurl }, (document) => {
+        res.send({ username: document.username, avatar: document.avatar })
+    })
 }
 
 module.exports = (app) => {
@@ -214,5 +214,5 @@ module.exports = (app) => {
     app.put('/zipcode', isLoggedIn, updateZipcode)
 
     app.get('/avatars/:users*?', isLoggedIn, getAvatars)
-    app.put('/avatar', isLoggedIn, updateAvatar)
+    app.put('/avatar', isLoggedIn, uploadImage('avatar'), updateAvatar)
 }

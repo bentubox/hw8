@@ -56,7 +56,7 @@ const resetDefaultFollowing = () => {
         }).save()
 }
 
-resetDefaultFollowing()
+// resetDefaultFollowing()
 
 // Function that queries users by username, then runs a callback function on the results.
 const findOneByUsername = (username, callback) => {

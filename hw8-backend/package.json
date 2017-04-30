@@ -4,16 +4,17 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "watch": "nodemon index.js",
-    "test": "mocha --opts mocha.opts src/**/*.spec.js",
-    "test:xunit": "npm run test -- --reporter xunit > results.xml"
+    "start": "set CLOUDINARY_URL=cloudinary://825793548461835:dMQy8RmBjw9T2EgsPXgGaTU-FBI@haeevxnfg && node index.js",
+    "watch": "set CLOUDINARY_URL=cloudinary://825793548461835:dMQy8RmBjw9T2EgsPXgGaTU-FBI@haeevxnfg && nodemon index.js",
+    "test": "set CLOUDINARY_URL=cloudinary://825793548461835:dMQy8RmBjw9T2EgsPXgGaTU-FBI@haeevxnfg && mocha --opts mocha.opts src/**/*.spec.js",
+    "test:xunit": "set CLOUDINARY_URL=cloudinary://825793548461835:dMQy8RmBjw9T2EgsPXgGaTU-FBI@haeevxnfg && npm run test -- --reporter xunit > results.xml"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "body-parser": "^1.15.0",
+    "cloudinary": "^1.8.0",
     "cookie-parser": "^1.4.3",
     "express": "^4.13.4",
     "md5": "^2.2.1",
@@ -24,6 +25,7 @@
   "devDependencies": {
     "babel-core": "^6.8.0",
     "chai": "^3.5.0",
+    "cross-env": "^4.0.0",
     "isomorphic-fetch": "^2.2.1",
     "jsdom": "^9.2.1",
     "jsdom-global": "^2.1.0",

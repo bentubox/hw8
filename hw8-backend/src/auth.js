@@ -47,11 +47,11 @@ const resetDefaultUsers = () => {
     new User({ 
             username:"Ben",
             salt: 421,
-            hash: md5(`lolwat`)
+            hash: md5(`lolwat421`)
         }).save()
 }
 
-resetDefaultUsers()
+// resetDefaultUsers()
 
 const debug = (req, res) => {
     sessionUser.hgetall(req.cookies[cooKey], function(err, userObj) {
