@@ -46,9 +46,17 @@ const resetDefaultProfiles = () => {
             zipcode: 12731,
             avatar: 'https://upload.wikimedia.org/wikipedia/commons/5/5d/A_bridge_over_the_former_Waverley_Railway_Line_-_geograph.org.uk_-_1062461.jpg'
         }).save()
+    new Profile({ 
+            username: 'Ben',
+            headline: 'ben too',
+            email: 'bn2@rice.edu',
+            dob: new Date(1993, 5, 26),
+            zipcode: 70707,
+            avatar: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Alphonse_Mucha_-_Zodiac.jpg/214px-Alphonse_Mucha_-_Zodiac.jpg'
+        }).save()
 }
 
-// resetDefaultProfiles()
+resetDefaultProfiles()
 
 // Functions that query users by username, then runs a callback function on the results.
 const findByUsernames = (usernames, callback) => {

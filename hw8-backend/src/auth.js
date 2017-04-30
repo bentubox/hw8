@@ -3,12 +3,16 @@ const User = require('./model.js').User
 const Profile = require('./model.js').Profile
 const Following = require('./model.js').Following
 
-// Cookie id for authentication.
-const cooKey = 'sid'
+if (!process.env.REDIS_URL) {
+    process.env.REDIS_URL = 'redis://h:p55297af89603d755d81a1940390443dd54386ae7a7d5a3ac2342db1656d6acaa@ec2-34-206-162-178.compute-1.amazonaws.com:25989'
+}
 
 // Map of session IDs to usernames.
-const sessionUser = {}
+const sessionUser = require('redis').createClient(process.env.REDIS_URL)
 const secret = "onemanflan"
+
+// Cookie id for authentication.
+const cooKey = 'sid'
 
 // Function that resets users to a set of default data.
 const resetDefaultUsers = () => {
@@ -40,12 +44,19 @@ const resetDefaultUsers = () => {
             salt: 888,
             hash: md5(`lolat-repeat-ask888`)
         }).save()
+    new User({ 
+            username:"Ben",
+            salt: 421,
+            hash: md5(`lolwat`)
+        }).save()
 }
 
-// resetDefaultUsers()
+resetDefaultUsers()
 
 const debug = (req, res) => {
-    res.send(sessionUser)
+    sessionUser.hgetall(req.cookies[cooKey], function(err, userObj) {
+        res.send(userObj)
+    })
 }
 
 const loginUser = (req, res) => {   
@@ -66,7 +77,7 @@ const loginUser = (req, res) => {
                 return
             }
             const sessionKey = md5(secret + new Date().getTime() + requestedUser.username) 
-            sessionUser[sessionKey] = requestedUser.username
+            sessionUser.hmset(sessionKey, { username: requestedUser.username })
             res.cookie(cooKey, sessionKey, { maxAge: 3600*1000, httpOnly: true })
             res.send({result: "success", username: req.body.username})
         } else{
@@ -86,18 +97,19 @@ const isLoggedIn = (req, res, next) => {
     if(!sid){
          return res.status(401).send("Not logged in!")
     }
-    const username = sessionUser[sid]
-    if (username){
-        req.user = username
-        next()
-    } else {
-        return res.status(401).send("Session has ended for user!")
-    }
+    sessionUser.hgetall(sid, function(err, userObj) {
+        if (userObj){
+            req.user = userObj.username
+            next()
+        } else {
+            return res.status(401).send("Session has ended for user!")
+        }
+    })
 }
 
 const logoutUser = (req, res) => {
     console.log('Payload received:', req.body)
-    delete sessionUser[req.cookies[cooKey]]
+    sessionUser.del(req.cookies[cooKey])
     res.cookie(cooKey, "", { httpOnly: true })
     res.send("OK")
 }

@@ -107,9 +107,16 @@ const resetDefaultArticles = () => {
         text: 'Someone put glue on my pillow and now im stuck pls help',
         comments: []
     }).save()
+    new Article({ 
+        author: "Kimmy",
+        img: "https://upload.wikimedia.org/wikipedia/commons/e/e5/BMVB_-_Ram%C3%B3n_L%C3%B3pez_Redondo_-_Finestra_g%C3%B2tica_claustre_del_monestir_de_FresdelVal_%28Burgos%29_-_903.jpg",
+        date: new Date(2012, 1, 14),
+        text: 'old news',
+        comments: []
+    }).save()
 }
 
-// resetDefaultArticles()
+resetDefaultArticles()
 
 // Function that finds an article based on id.
 const findById = (id, callback) => {
