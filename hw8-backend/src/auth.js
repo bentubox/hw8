@@ -3,6 +3,8 @@ const User = require('./model.js').User
 const Profile = require('./model.js').Profile
 const Following = require('./model.js').Following
 
+const GoogleStrategy = require('passport-google-oauth').OAuth2Strategy
+
 if (!process.env.REDIS_URL) {
     process.env.REDIS_URL = 'redis://h:p55297af89603d755d81a1940390443dd54386ae7a7d5a3ac2342db1656d6acaa@ec2-34-206-162-178.compute-1.amazonaws.com:25989'
 }
@@ -87,6 +89,19 @@ const loginUser = (req, res) => {
     })
 }
 
+const loginUserOAuth = (req, res) => {
+    console.log('Payload received:', req.body)
+    console.log('User received:', req.session.passport.user)
+    if (req.session && req.session.passport && req.session.passport.user){
+        const sessionKey = md5(secret + new Date().getTime() + req.session.passport.user.username) 
+        sessionUser.hmset(sessionKey, { username: req.session.passport.user.username })
+        res.cookie(cooKey, sessionKey, { maxAge: 3600*1000, httpOnly: true })
+        res.send({result: "success", username: req.session.passport.user.username})
+    } else{
+        res.status(404).send("Could not locate passport for user!")
+    }   
+}
+
 const autoLoginUser = (req, res) => {
     res.send({result: "success", username: req.user})
 }
@@ -97,7 +112,7 @@ const isLoggedIn = (req, res, next) => {
     if(!sid){
          return res.status(401).send("Not logged in!")
     }
-    sessionUser.hgetall(sid, function(err, userObj) {
+    sessionUser.hgetall(sid, (err, userObj) => {
         if (userObj){
             req.user = userObj.username
             next()
@@ -118,25 +133,31 @@ const registerUser = (req, res) => {
     console.log('Payload received:', req.body)
     const salt = Math.random() * 1000
     const hash = md5(`lol${req.body.password}${salt}`)
-    new User({ 
-        username: req.body.username,
-        salt: salt,
-        hash: hash
-    }).save( () => {
-         new Profile({ 
-            username: req.body.username,
-            email: req.body.email,
-            dob: req.body.dob,
-            zipcode: req.body.zipcode
-        }).save( () => {
-            new Following({
+    User.findOne( {username: req.body.username}, (err, document) => {
+        if (document){
+            res.status(403).send("Username is already in use! Registration failed.")
+        } else {
+            new User({ 
                 username: req.body.username,
-                following: []
+                salt: salt,
+                hash: hash
             }).save( () => {
-                 res.send({result: "success", username: req.body.username})
-            })
-        })
-    })   
+                new Profile({ 
+                    username: req.body.username,
+                    email: req.body.email,
+                    dob: req.body.dob,
+                    zipcode: req.body.zipcode
+                }).save( () => {
+                    new Following({
+                        username: req.body.username,
+                        following: []
+                    }).save( () => {
+                        res.send({result: "success", username: req.body.username})
+                    })
+                })
+            })  
+        }
+    }) 
 }
 
 const updatePassword = (req, res) => {
@@ -155,12 +176,77 @@ const updatePassword = (req, res) => {
     })    
 }
 
-module.exports = (app) => {
+module.exports = (app, passport) => {
+    passport.serializeUser( (user, done) => {
+        console.log('Serializing User ', user)
+        User.findOne({ $or: [{username: user.id}, {email: { $in: user.emails }}] }, (err, document) => {
+            if (document) {
+                // If user exists (by username or email), load that user.
+                console.log('Loading User ', document)
+                done(null, document)
+            } else {
+                // Create new user.
+                var email, photo
+                if (user.emails && user.emails.length > 0) {
+                     email = user.emails[0].value
+                }
+                if (user.photos && user.photos.length > 0) {
+                     photo = user.photos[0].value
+                }
+                new User({ 
+                    username: user.id,
+                    auth: user.provider
+                }).save( (err, newUser) => {
+                    new Profile({ 
+                        username: user.id,
+                        email: email,
+                        avatar: photo,
+                    }).save( () => {
+                        new Following({
+                            username: user.id,
+                            following: []
+                        }).save( () => {
+                           console.log('Serialized user ', newUser)
+                           done(null, newUser)
+                        })
+                    })
+                })
+            }
+        })
+    })
+
+    passport.deserializeUser( (id, done) => {
+        console.log('Deserializing User ', id)
+        User.findOne({ username: id }, (err, document) => {
+            if (err) {
+                throw new Error(err)
+            }
+            done(null, document)
+        })
+    })
+
+    passport.use( new GoogleStrategy({
+        clientID: '982294091723-6ptpvau7cqudvitleg7kd60gmodogdib.apps.googleusercontent.com',
+        clientSecret: 'Sn3vwzHtEspmCN_I76hiI8_s',
+        callbackURL: 'http://localhost:3000/auth/google/callback',
+
+    }, (token, refreshToken, profile, done) => {
+        console.log(profile)
+        process.nextTick( () => {
+            return done(null, profile)
+        })
+    }))
+    
     app.post('/login', loginUser)
     app.put('/logout', isLoggedIn, logoutUser)
     app.post('/register', registerUser)
     app.put('/password', isLoggedIn, updatePassword)
     app.get('/autologin', isLoggedIn, autoLoginUser)
+
+    app.get('/auth/google', (req, res, next) => {console.log(res._headers); next()}, passport.authenticate('google', { scope : ['openid', 'profile', 'email'] }))
+    app.use('/auth/google/callback', passport.authenticate('google'), loginUserOAuth)
+
+    // app.get('auth/google/link', passport.authenticate('google', { scope : ['openid', 'profile', 'email'] }))
 }
 
 module.exports.isLoggedIn = isLoggedIn

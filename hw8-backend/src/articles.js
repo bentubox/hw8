@@ -179,8 +179,8 @@ const updateCommentById = (id, commentId, newText, res, callback) => {
                         if (err){
                             throw new Error(err)
                         }
-                        const newComments = document.comments.map( (comment) => { return (comment._id == newComment._id ? newComment : comment) })
-                        Article.findByIdAndUpdate(id, { comments: newComment }, { new: true }, (err, newDocument) => {
+                        const newComments = document.comments.map( (oldComment) => { return (oldComment._id.toString() == newComment._id.toString() ? newComment : oldComment) })
+                        Article.findByIdAndUpdate(id, { comments: newComments }, { new: true }, (err, newDocument) => {
                             callback(newDocument)
                         })
                     })

@@ -22,7 +22,8 @@ const profileSchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema({
 	username: String,
     salt: Number,
-	hash: String
+	hash: String,
+    auth: String
 })
 
 const followingSchema = new mongoose.Schema({

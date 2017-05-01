@@ -2,6 +2,8 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const cookieParser = require('cookie-parser')
 
+const passport = require('passport')
+
 const app = express()
 
 // Enable CORS.
@@ -13,13 +15,17 @@ const enableCORS = (req, res, next) => {
     if(req.method === 'OPTIONS'){
         res.status(200)
     }
+    // console.log(req.headers.origin)
+    // console.log(res._headers)
     next()
 }
 app.use(enableCORS)
 app.use(bodyParser.json())
 app.use(cookieParser())
+app.use(passport.initialize())
+app.use(passport.session())
 
-require('./src/auth')(app)
+require('./src/auth')(app, passport)
 require('./src/articles')(app)
 require('./src/following')(app)
 require('./src/profile')(app)
