@@ -23,7 +23,7 @@ const userSchema = new mongoose.Schema({
 	username: String,
     salt: Number,
 	hash: String,
-    auth: String
+    auth: [ {provider: String, username: String} ]
 })
 
 const followingSchema = new mongoose.Schema({

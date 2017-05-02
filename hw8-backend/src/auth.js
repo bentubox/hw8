@@ -5,6 +5,8 @@ const Following = require('./model.js').Following
 
 const GoogleStrategy = require('passport-google-oauth').OAuth2Strategy
 
+const frontendURL = "http://localhost:8080"
+
 if (!process.env.REDIS_URL) {
     process.env.REDIS_URL = 'redis://h:p55297af89603d755d81a1940390443dd54386ae7a7d5a3ac2342db1656d6acaa@ec2-34-206-162-178.compute-1.amazonaws.com:25989'
 }
@@ -53,7 +55,7 @@ const resetDefaultUsers = () => {
         }).save()
 }
 
-// resetDefaultUsers()
+resetDefaultUsers()
 
 const debug = (req, res) => {
     sessionUser.hgetall(req.cookies[cooKey], function(err, userObj) {
@@ -93,12 +95,42 @@ const loginUserOAuth = (req, res) => {
     console.log('Payload received:', req.body)
     console.log('User received:', req.session.passport.user)
     if (req.session && req.session.passport && req.session.passport.user){
-        const sessionKey = md5(secret + new Date().getTime() + req.session.passport.user.username) 
-        sessionUser.hmset(sessionKey, { username: req.session.passport.user.username })
-        res.cookie(cooKey, sessionKey, { maxAge: 3600*1000, httpOnly: true })
-        res.send({result: "success", username: req.session.passport.user.username})
-    } else{
-        res.status(404).send("Could not locate passport for user!")
+        if (req.cookies.sid){
+            // Cookie exists, user is already logged in. Perform account linking or unlinking.
+            const sid = req.cookies[cooKey]
+            if(!sid){
+                return res.status(401).send("Not logged in!")
+            }
+            sessionUser.hgetall(sid, (err, userObj) => {
+                if (userObj){
+                    User.findOne({username: userObj.username}, (err, user) => {
+                        if (user){
+                            const linkAuth = req.session.passport.user.auth[0]
+                            const newAuthArray = (user.auth.includes(linkAuth) ? user.auth.filter((element) => { return !linkAuth == element }) : [...user.auth, linkAuth])
+                            User.findOneAndUpdate({username: userObj.username}, { auth: newAuthArray }, { new: true }, (err, newUser) => {
+                                if (newUser){
+                                    // Delete linked/unlinked third party record.
+                                    User.remove({ username: req.session.passport.user.username })
+                                }
+                            })
+                        } else{
+                            return res.status(404).send("Failed to link accounts!")
+                        }
+                    })
+                } else {
+                    res.cookie(cooKey, "", { httpOnly: true })
+                    return res.status(401).send("Session has ended for user!")
+                }
+            })
+        } else {
+            // No existing cookie. Create cookie for login and redirect to frontend.
+            const sessionKey = md5(secret + new Date().getTime() + req.session.passport.user.username) 
+            sessionUser.hmset(sessionKey, { username: req.session.passport.user.username })
+            res.cookie(cooKey, sessionKey, { maxAge: 3600*1000, httpOnly: true })
+        }
+        return res.redirect(frontendURL)
+    } else {
+        return res.status(404).redirect(frontendURL)
     }   
 }
 
@@ -117,6 +149,7 @@ const isLoggedIn = (req, res, next) => {
             req.user = userObj.username
             next()
         } else {
+            res.cookie(cooKey, "", { httpOnly: true })
             return res.status(401).send("Session has ended for user!")
         }
     })
@@ -179,9 +212,11 @@ const updatePassword = (req, res) => {
 module.exports = (app, passport) => {
     passport.serializeUser( (user, done) => {
         console.log('Serializing User ', user)
-        User.findOne({ $or: [{username: user.id}, {email: { $in: user.emails }}] }, (err, document) => {
+        const provider = user.provider
+        const providerUsername = `${provider}${user.id}`
+        User.findOne({ $or: [{username: providerUsername}, {email: { $in: user.emails }}, {auth: { $elemMatch: { provider: provider, username: providerUsername }}}] }, (err, document) => {
             if (document) {
-                // If user exists (by username or email), load that user.
+                // If user exists (by username, email, or linked account), load that user.
                 console.log('Loading User ', document)
                 done(null, document)
             } else {
@@ -194,16 +229,16 @@ module.exports = (app, passport) => {
                      photo = user.photos[0].value
                 }
                 new User({ 
-                    username: user.id,
-                    auth: user.provider
+                    username: providerUsername,
+                    auth: [{ provider: provider, username: providerUsername }]
                 }).save( (err, newUser) => {
                     new Profile({ 
-                        username: user.id,
+                        username: providerUsername,
                         email: email,
                         avatar: photo,
                     }).save( () => {
                         new Following({
-                            username: user.id,
+                            username: providerUsername,
                             following: []
                         }).save( () => {
                            console.log('Serialized user ', newUser)
@@ -231,7 +266,6 @@ module.exports = (app, passport) => {
         callbackURL: 'http://localhost:3000/auth/google/callback',
 
     }, (token, refreshToken, profile, done) => {
-        console.log(profile)
         process.nextTick( () => {
             return done(null, profile)
         })
@@ -243,10 +277,9 @@ module.exports = (app, passport) => {
     app.put('/password', isLoggedIn, updatePassword)
     app.get('/autologin', isLoggedIn, autoLoginUser)
 
-    app.get('/auth/google', (req, res, next) => {console.log(res._headers); next()}, passport.authenticate('google', { scope : ['openid', 'profile', 'email'] }))
+    app.get('/auth/google', passport.authenticate('google', { scope: ['openid', 'profile', 'email'] }))
+    
     app.use('/auth/google/callback', passport.authenticate('google'), loginUserOAuth)
-
-    // app.get('auth/google/link', passport.authenticate('google', { scope : ['openid', 'profile', 'email'] }))
 }
 
 module.exports.isLoggedIn = isLoggedIn
