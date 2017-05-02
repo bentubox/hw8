@@ -5,7 +5,7 @@ const Following = require('./model.js').Following
 
 const GoogleStrategy = require('passport-google-oauth').OAuth2Strategy
 
-const frontendURL = "http://localhost:8080"
+const frontendURL = "special-morning.surge.sh"
 
 if (!process.env.REDIS_URL) {
     process.env.REDIS_URL = 'redis://h:p55297af89603d755d81a1940390443dd54386ae7a7d5a3ac2342db1656d6acaa@ec2-34-206-162-178.compute-1.amazonaws.com:25989'
@@ -263,7 +263,7 @@ module.exports = (app, passport) => {
     passport.use( new GoogleStrategy({
         clientID: '982294091723-6ptpvau7cqudvitleg7kd60gmodogdib.apps.googleusercontent.com',
         clientSecret: 'Sn3vwzHtEspmCN_I76hiI8_s',
-        callbackURL: 'http://localhost:3000/auth/google/callback',
+        callbackURL: 'https://warm-everglades-17804.herokuapp.com/auth/google/callback',
 
     }, (token, refreshToken, profile, done) => {
         process.nextTick( () => {
