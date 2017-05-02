@@ -55,7 +55,7 @@ const resetDefaultUsers = () => {
         }).save()
 }
 
-resetDefaultUsers()
+// resetDefaultUsers()
 
 const debug = (req, res) => {
     sessionUser.hgetall(req.cookies[cooKey], function(err, userObj) {
@@ -99,7 +99,7 @@ const loginUserOAuth = (req, res) => {
             // Cookie exists, user is already logged in. Perform account linking or unlinking.
             const sid = req.cookies[cooKey]
             if(!sid){
-                return res.status(401).send("Not logged in!")
+                res.status(401)
             }
             sessionUser.hgetall(sid, (err, userObj) => {
                 if (userObj){
@@ -114,12 +114,12 @@ const loginUserOAuth = (req, res) => {
                                 }
                             })
                         } else{
-                            return res.status(404).send("Failed to link accounts!")
+                            res.status(404)
                         }
                     })
                 } else {
                     res.cookie(cooKey, "", { httpOnly: true })
-                    return res.status(401).send("Session has ended for user!")
+                    res.status(401)
                 }
             })
         } else {
