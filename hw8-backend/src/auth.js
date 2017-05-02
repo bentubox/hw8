@@ -5,7 +5,7 @@ const Following = require('./model.js').Following
 
 const GoogleStrategy = require('passport-google-oauth').OAuth2Strategy
 
-const frontendURL = "special-morning.surge.sh"
+const frontendURL = "http://special-morning.surge.sh"
 
 if (!process.env.REDIS_URL) {
     process.env.REDIS_URL = 'redis://h:p55297af89603d755d81a1940390443dd54386ae7a7d5a3ac2342db1656d6acaa@ec2-34-206-162-178.compute-1.amazonaws.com:25989'
