@@ -56,7 +56,7 @@ const resetDefaultUsers = () => {
         }).save()
 }
 
-resetDefaultUsers()
+// resetDefaultUsers()
 
 const debug = (req, res) => {
     sessionUser.hgetall(req.cookies[cooKey], function(err, userObj) {
