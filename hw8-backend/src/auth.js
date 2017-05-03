@@ -105,7 +105,7 @@ const loginUserOAuth = (req, res) => {
                 if (userObj){
                     User.findOne({username: userObj.username}, (err, user) => {
                         if (user){
-                            const linkAuth = req.session.passport.user.auth[0]
+                            const linkAuth = { provider: req.session.passport.user.provider, username: req.session.passport.user.username }
                             const newAuthArray = (user.auth.includes(linkAuth) ? user.auth.filter((element) => { return !linkAuth == element }) : [...user.auth, linkAuth])
                             User.findOneAndUpdate({username: userObj.username}, { auth: newAuthArray }, { new: true }, (err, newUser) => {
                                 if (newUser){
