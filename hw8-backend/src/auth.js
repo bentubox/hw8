@@ -6,6 +6,7 @@ const Following = require('./model.js').Following
 const GoogleStrategy = require('passport-google-oauth').OAuth2Strategy
 
 const frontendURL = "http://special-morning.surge.sh"
+// const frontendURL = "http://localhost:8080"
 
 if (!process.env.REDIS_URL) {
     process.env.REDIS_URL = 'redis://h:p55297af89603d755d81a1940390443dd54386ae7a7d5a3ac2342db1656d6acaa@ec2-34-206-162-178.compute-1.amazonaws.com:25989'
@@ -55,7 +56,7 @@ const resetDefaultUsers = () => {
         }).save()
 }
 
-// resetDefaultUsers()
+resetDefaultUsers()
 
 const debug = (req, res) => {
     sessionUser.hgetall(req.cookies[cooKey], function(err, userObj) {
@@ -105,12 +106,22 @@ const loginUserOAuth = (req, res) => {
                 if (userObj){
                     User.findOne({username: userObj.username}, (err, user) => {
                         if (user){
-                            const linkAuth = { provider: req.session.passport.user.provider, username: req.session.passport.user.username }
-                            const newAuthArray = (user.auth.includes(linkAuth) ? user.auth.filter((element) => { return !linkAuth == element }) : [...user.auth, linkAuth])
+                            const linkAuth = req.session.passport.user.auth
+                            const compareAuth = (element) => {return (element.provider == linkAuth[0].provider && element.username == linkAuth[0].username)}
+                            const newAuthArray = (user.auth.findIndex(compareAuth) != -1 ? user.auth.filter((element) => { return !compareAuth(element) }) : [...user.auth, ...linkAuth])
+                            console.log(user.auth)
+                            console.log(linkAuth[0])
+                            console.log(newAuthArray)
                             User.findOneAndUpdate({username: userObj.username}, { auth: newAuthArray }, { new: true }, (err, newUser) => {
                                 if (newUser){
-                                    // Delete linked/unlinked third party record.
-                                    User.remove({ username: req.session.passport.user.username })
+                                    if(req.session.passport.user.username !== newUser.username){
+                                        // Delete linked/unlinked third party record.
+                                        User.remove({ username: req.session.passport.user.username }, (err) => {
+                                            User.find({}, (err, users) => {
+                                                console.log(users)
+                                            })
+                                        })
+                                    }
                                 }
                             })
                         } else{
@@ -214,11 +225,13 @@ module.exports = (app, passport) => {
         console.log('Serializing User ', user)
         const provider = user.provider
         const providerUsername = `${provider}${user.id}`
-        User.findOne({ $or: [{username: providerUsername}, {email: { $in: user.emails }}, {auth: { $elemMatch: { provider: provider, username: providerUsername }}}] }, (err, document) => {
-            if (document) {
-                // If user exists (by username, email, or linked account), load that user.
-                console.log('Loading User ', document)
-                done(null, document)
+        User.findOne({ $or: [{username: providerUsername}, {email: { $in: user.emails }}, {auth: { $elemMatch: { provider: provider, username: providerUsername }}}] }, (err, userObj) => {
+            if (userObj) {
+                // If user exists (by username, email, or linked account), load that user after sorting auth to facilitate delinking.
+                User.findOneAndUpdate({ username: userObj.username }, { auth: userObj.auth.sort((x, y) => { return x.username == providerUsername ? -1 : y.username == providerUsername ? 1 : 0 })}, { new: true}, (err, document) => {
+                    console.log('Loading User ', document)
+                    done(null, document)
+                })
             } else {
                 // Create new user.
                 var email, photo
@@ -264,6 +277,7 @@ module.exports = (app, passport) => {
         clientID: '982294091723-6ptpvau7cqudvitleg7kd60gmodogdib.apps.googleusercontent.com',
         clientSecret: 'Sn3vwzHtEspmCN_I76hiI8_s',
         callbackURL: 'https://warm-everglades-17804.herokuapp.com/auth/google/callback',
+        // callbackURL: 'http://localhost:3000/auth/google/callback'
 
     }, (token, refreshToken, profile, done) => {
         process.nextTick( () => {
